@@ -21,6 +21,10 @@ class Market extends Model
         'width',
         'height',
         'weight',
-        'theoretical_thickness'
+        'theoretical_thickness'     
     ];
+
+    public function images() {
+        return $this->hasMany(MarketImage::class);
+    }
 }
