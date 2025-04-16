@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 class MarketController extends Controller
 {
     public function index() {
-        $markets = Market::with('images')->get();
+        $markets = Market::with(['images', 'imagesTypologies'])->get();
 
         return response()->json($markets);
     }       
@@ -28,17 +28,32 @@ class MarketController extends Controller
             'height' => 'required|numeric',
             'weight' => 'required|numeric',
             'theoretical_thickness' => 'required|numeric',
-            'images.*' => 'image|mimes:jpeg,png,jpg|max:2048'
+            'highlights' => 'required|array',
+            'highlights.*' => 'string',
+            'logo' => 'image|mimes:jpeg,png,jpg|max:2048',
+            'images.*' => 'image|mimes:jpeg,png,jpg|max:2048',
+            'imagesTypologies.*' => 'image|mimes:jpeg,png,jpg|max:2048',
         ]);    
 
-        $data = $request->except('images');
+        $data = $request->except(['images', 'imagesTypologies']);
+        $data['highlights'] = json_encode($data['highlights']);
         $market = Market::create($data);
 
         if ($request->hasFile('images')) {
             foreach ($request->file('images') as $image) {
-                $path = $image->store('public/uploads');
+                $path = $image->store('public/uploads/imagesMarket');
 
                 $market->images()->create([
+                    'path' => Storage::url($path)
+                ]);
+            };
+        }
+
+        if ($request->hasFile('imagesTypologies')) {
+            foreach ($request->file('imagesTypologies') as $image) {
+                $path = $image->store('public/uploads/imagesTypologies');
+
+                $market->imagesTypologies()->create([
                     'path' => Storage::url($path)
                 ]);
             };

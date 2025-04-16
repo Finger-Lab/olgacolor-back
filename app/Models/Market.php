@@ -12,6 +12,7 @@ class Market extends Model
     protected $fillable = [
         'name',
         'description',
+        'category',
         'air_permeability',
         'water_tightness',
         'wind_resistance',
@@ -21,10 +22,15 @@ class Market extends Model
         'width',
         'height',
         'weight',
-        'theoretical_thickness'     
+        'theoretical_thickness',
+        'highlights'
     ];
 
     public function images() {
         return $this->hasMany(MarketImage::class);
+    }
+
+    public function imagesTypologies() {
+        return $this->hasMany(ImagesTypologies::class);
     }
 }

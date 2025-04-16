@@ -14,7 +14,8 @@ return new class extends Migration
         Schema::create('markets', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('description');
+            $table->longText('description');
+            $table->string('category');
             $table->double('air_permeability');
             $table->double('water_tightness');
             $table->double('wind_resistance');
@@ -25,6 +26,7 @@ return new class extends Migration
             $table->double('height');
             $table->double('weight');
             $table->double('theoretical_thickness');
+            $table->string('highlights');
             $table->timestamps();
         });
     }
