@@ -25,4 +25,5 @@ Route::get('/products', [ProductController::class, 'index']);
 Route::get('/markets', [MarketController::class, 'index']); 
 Route::post('/markets', [MarketController::class, 'create']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
 Route::post('/send-email', [ContactController::class, 'sendEmail']);
