@@ -1,3 +1,8 @@
+## Para rodar o projeto é necessário
+- [PHP]() 8.1 ou superior <small style="color: gray">Linguagem de programação</small>
+- [Composer](https://getcomposer.org/download/) <small style="color: gray">Gerenciador de dependências do PHP</small>
+- [Node.js]() e NPM <small style="color: gray">Gerenciador de dependências do Node</small>
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
 <p align="center">
