@@ -24,5 +24,10 @@ class DatabaseSeeder extends Seeder
             'email' => 'bernardo@olgacolor.com',
             'password' => Hash::make('olga1234'),
         ]);
+        
+        // Adicionar dados de cotações
+        $this->call([
+            CurrencyRateSeeder::class,
+        ]);
     }
 }

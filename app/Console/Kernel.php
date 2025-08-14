@@ -12,7 +12,21 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        // Executar busca de cotações diariamente às 9:00
+        $schedule->command('currency:fetch')
+                 ->dailyAt('09:00')
+                 ->timezone('America/Sao_Paulo')
+                 ->withoutOverlapping()
+                 ->runInBackground()
+                 ->appendOutputTo(storage_path('logs/currency-fetch.log'));
+        
+        // Backup: tentar novamente às 15:00 se falhou pela manhã
+        $schedule->command('currency:fetch')
+                 ->dailyAt('15:00')
+                 ->timezone('America/Sao_Paulo')
+                 ->withoutOverlapping()
+                 ->runInBackground()
+                 ->appendOutputTo(storage_path('logs/currency-fetch.log'));
     }
 
     /**
