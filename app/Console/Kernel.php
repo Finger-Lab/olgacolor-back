@@ -14,7 +14,7 @@ class Kernel extends ConsoleKernel
     {
         // Executar busca de cotações diariamente às 14:00
         $schedule->command('currency:fetch')
-                 ->dailyAt('14:00')
+                 ->dailyAt('09:00')
                  ->timezone('America/Sao_Paulo')
                  ->withoutOverlapping()
                  ->runInBackground()
@@ -22,7 +22,7 @@ class Kernel extends ConsoleKernel
         
         // Backup: tentar novamente às 17:00 se falhou pela manhã
         $schedule->command('currency:fetch')
-                 ->dailyAt('17:00')
+                 ->dailyAt('15:00')
                  ->timezone('America/Sao_Paulo')
                  ->withoutOverlapping()
                  ->runInBackground()
