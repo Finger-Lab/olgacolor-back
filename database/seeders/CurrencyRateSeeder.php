@@ -14,60 +14,158 @@ class CurrencyRateSeeder extends Seeder
      */
     public function run(): void
     {
-        // Criar dados dos últimos 30 dias para USD
-        $this->createUSDRates();
+        // Limpar dados existentes
+        CurrencyRate::whereIn('currency_type', [CurrencyRate::USD, CurrencyRate::ALUMINUM])->delete();
         
-        // Criar dados dos últimos 30 dias para Alumínio
-        $this->createAluminumRates();
+        // Criar dados reais baseados nos arquivos fornecidos
+        $this->createRealUSDRates();
+        $this->createRealAluminumRates();
     }
     
     /**
-     * Criar cotações do USD dos últimos 30 dias
+     * Criar cotações reais do USD baseadas nos dados fornecidos
      */
-    private function createUSDRates(): void
+    private function createRealUSDRates(): void
     {
-        $baseRate = 5.20; // Taxa base fictícia
-        
-        for ($i = 30; $i >= 0; $i--) {
-            $date = Carbon::today()->subDays($i);
-            
-            // Variação aleatória entre -3% e +3%
-            $variation = (mt_rand(-300, 300) / 10000);
-            $rate = $baseRate * (1 + $variation);
-            
+        $rates = [
+            // Dados de Junho 2025
+            ['2025-06-02', 5.7087],
+            ['2025-06-03', 5.6937],
+            ['2025-06-04', 5.6694],
+            ['2025-06-05', 5.6332],
+            ['2025-06-06', 5.5969],
+            ['2025-06-09', 5.5947],
+            ['2025-06-10', 5.5760],
+            ['2025-06-11', 5.5557],
+            ['2025-06-12', 5.5390],
+            ['2025-06-13', 5.5388],
+            ['2025-06-16', 5.5652],
+            ['2025-06-17', 5.5123],
+            ['2025-06-18', 5.4773],
+            ['2025-06-19', 5.4879],
+            ['2025-06-23', 5.4957],
+            ['2025-06-24', 5.5213],
+            ['2025-06-25', 5.4938],
+            ['2025-06-26', 5.5427],
+            ['2025-06-27', 5.5145],
+            ['2025-06-30', 5.4759],
+            // Dados de Julho 2025
+            ['2025-07-01', 5.4571],
+            ['2025-07-02', 5.4511],
+            ['2025-07-03', 5.4512],
+            ['2025-07-04', 5.4208],
+            ['2025-07-07', 5.4090],
+            ['2025-07-08', 5.4552],
+            ['2025-07-09', 5.4571],
+            ['2025-07-10', 5.4626],
+            ['2025-07-11', 5.5433],
+            ['2025-07-14', 5.5722],
+            ['2025-07-15', 5.5595],
+            ['2025-07-16', 5.5576],
+            ['2025-07-17', 5.5722],
+            ['2025-07-18', 5.5737],
+            ['2025-07-21', 5.5466],
+            ['2025-07-22', 5.5625],
+            ['2025-07-23', 5.5709],
+            ['2025-07-24', 5.5537],
+            ['2025-07-25', 5.5239],
+            ['2025-07-28', 5.5426],
+            ['2025-07-29', 5.5877],
+            ['2025-07-30', 5.5764],
+            ['2025-07-31', 5.6034],
+            // Dados de Agosto 2025
+            ['2025-08-01', 5.6021],
+            ['2025-08-04', 5.5436],
+            ['2025-08-05', 5.5113],
+            ['2025-08-06', 5.5119],
+            ['2025-08-07', 5.4802],
+            ['2025-08-08', 5.4638],
+            ['2025-08-11', 5.4254],
+            ['2025-08-12', 5.4473],
+            ['2025-08-13', 5.4052],
+            ['2025-08-14', 5.3928],
+        ];
+
+        foreach ($rates as [$date, $rate]) {
             CurrencyRate::create([
                 'currency_type' => CurrencyRate::USD,
-                'rate' => round($rate, 4),
-                'rate_date' => $date
+                'rate' => $rate,
+                'rate_date' => Carbon::parse($date)->setTime(12, 0, 0)
             ]);
-            
-            // Ajustar taxa base para próxima iteração (simular tendência)
-            $baseRate = $rate;
         }
     }
     
     /**
-     * Criar cotações do Alumínio dos últimos 30 dias
+     * Criar cotações reais do Alumínio baseadas nos dados fornecidos
      */
-    private function createAluminumRates(): void
+    private function createRealAluminumRates(): void
     {
-        $baseRate = 2100.00; // Taxa base fictícia por tonelada
-        
-        for ($i = 30; $i >= 0; $i--) {
-            $date = Carbon::today()->subDays($i);
-            
-            // Variação aleatória entre -5% e +5%
-            $variation = (mt_rand(-500, 500) / 10000);
-            $rate = $baseRate * (1 + $variation);
-            
+        $rates = [
+            // Dados de Junho 2025
+            ['2025-06-02', 2451.00],
+            ['2025-06-03', 2446.00],
+            ['2025-06-04', 2473.00],
+            ['2025-06-05', 2472.50],
+            ['2025-06-06', 2431.50],
+            ['2025-06-09', 2468.50],
+            ['2025-06-10', 2482.00],
+            ['2025-06-11', 2511.50],
+            ['2025-06-12', 2510.00],
+            ['2025-06-13', 2485.00],
+            ['2025-06-16', 2508.50],
+            ['2025-06-17', 2530.00],
+            ['2025-06-18', 2545.50],
+            ['2025-06-19', 2525.50],
+            ['2025-06-20', 2529.00],
+            ['2025-06-23', 2599.00],
+            ['2025-06-24', 2572.50],
+            ['2025-06-25', 2555.50],
+            ['2025-06-26', 2573.50],
+            ['2025-06-27', 2583.00],
+            ['2025-06-30', 2593.00],
+            // Dados de Julho 2025
+            ['2025-07-01', 2604.00],
+            ['2025-07-02', 2602.00],
+            ['2025-07-03', 2604.00],
+            ['2025-07-04', 2587.00],
+            ['2025-07-07', 2566.00],
+            ['2025-07-08', 2587.00],
+            ['2025-07-09', 2580.00],
+            ['2025-07-10', 2609.00],
+            ['2025-07-11', 2591.50],
+            ['2025-07-14', 2586.00],
+            ['2025-07-15', 2594.00],
+            ['2025-07-16', 2568.00],
+            ['2025-07-17', 2557.00],
+            ['2025-07-18', 2591.50],
+            ['2025-07-21', 2649.00],
+            ['2025-07-22', 2638.50],
+            ['2025-07-23', 2645.00],
+            ['2025-07-24', 2646.50],
+            ['2025-07-25', 2657.00],
+            ['2025-07-28', 2632.50],
+            ['2025-07-29', 2609.00],
+            ['2025-07-30', 2611.00],
+            ['2025-07-31', 2580.00],
+            // Dados de Agosto 2025
+            ['2025-08-01', 2545.00],
+            ['2025-08-04', 2575.00],
+            ['2025-08-05', 2568.00],
+            ['2025-08-06', 2589.50],
+            ['2025-08-07', 2617.00],
+            ['2025-08-08', 2609.00],
+            ['2025-08-11', 2586.50],
+            ['2025-08-12', 2605.00],
+            ['2025-08-13', 2626.00],
+            ['2025-08-14', 2608.50],
+        ];
+
+        foreach ($rates as [$date, $rate]) {
             CurrencyRate::create([
                 'currency_type' => CurrencyRate::ALUMINUM,
-                'rate' => round($rate, 2),
-                'rate_date' => $date
+                'rate' => $rate,
+                'rate_date' => Carbon::parse($date)->setTime(12, 0, 0)
             ]);
-            
-            // Ajustar taxa base para próxima iteração
-            $baseRate = $rate;
         }
     }
 }

@@ -17,15 +17,18 @@ class CurrencyRateService
         try {
             // Usando API gratuita do exchangerate-api.com
             // Você pode se registrar para obter uma chave gratuita
-            $response = Http::get('https://api.exchangerate-api.com/v4/latest/USD');
+            $response = Http::withOptions([
+                'verify' => false,
+                'timeout' => 30,
+            ])->get('https://api.exchangerate-api.com/v4/latest/USD');
             
             if ($response->successful()) {
                 $data = $response->json();
                 $brlRate = $data['rates']['BRL'] ?? null;
                 
                 if ($brlRate) {
-                    // Inverter para obter USD em BRL
-                    $usdRate = 1 / $brlRate;
+                    // $brlRate já representa quantos reais equivalem a 1 USD
+                    $usdRate = $brlRate;
                     
                     $this->storeCurrencyRate(CurrencyRate::USD, $usdRate);
                     Log::info('Cotação USD atualizada', ['rate' => $usdRate]);
@@ -49,7 +52,10 @@ class CurrencyRateService
     {
         try {
             $today = Carbon::today()->format('m-d-Y');
-            $response = Http::get("https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)", [
+            $response = Http::withOptions([
+                'verify' => false,
+                'timeout' => 30,
+            ])->get("https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)", [
                 'moeda' => "'USD'",
                 'dataCotacao' => "'{$today}'",
                 '$format' => 'json'
@@ -73,28 +79,98 @@ class CurrencyRateService
     }
 
     /**
-     * Buscar e armazenar cotação do Alumínio
+     * Buscar e armazenar cotação do Alumínio via scraping
      */
     public function fetchAndStoreAluminumRate(): bool
     {
         try {
-            // Usando API fictícia do London Metal Exchange (LME)
-            // Nota: Para uso real, você precisa se registrar em uma API de commodities
-            // como MetalsAPI.com, Alpha Vantage, ou similar
+            $aluminumRate = $this->scrapeAluminumPrice();
             
-            // Simulando um valor para demonstração
-            // Em produção, substitua por uma chamada real de API
-            $mockRate = $this->getMockAluminumRate();
+            if ($aluminumRate) {
+                $this->storeCurrencyRate(CurrencyRate::ALUMINUM, $aluminumRate);
+                Log::info('Cotação Alumínio atualizada via scraping', ['rate' => $aluminumRate]);
+                return true;
+            }
             
-            $this->storeCurrencyRate(CurrencyRate::ALUMINUM, $mockRate);
-            Log::info('Cotação Alumínio atualizada (mock)', ['rate' => $mockRate]);
-            
-            return true;
-            
+            Log::error('Erro ao buscar cotação Alumínio', ['error' => 'Erro desconhecido']);
+            return false;
+
         } catch (\Exception $e) {
             Log::error('Erro ao buscar cotação Alumínio', ['error' => $e->getMessage()]);
             return false;
         }
+    }
+
+    /**
+     * Fazer scraping do preço do alumínio no Trading Economics
+     */
+    private function scrapeAluminumPrice(): ?float
+    {
+        try {
+            $response = Http::withOptions([
+                'verify' => false,
+                'timeout' => 30,
+            ])->withHeaders([
+                'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+                'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language' => 'en-US,en;q=0.5',
+                'Accept-Encoding' => 'gzip, deflate',
+                'DNT' => '1',
+                'Connection' => 'keep-alive',
+                'Upgrade-Insecure-Requests' => '1',
+            ])->get('https://tradingeconomics.com/commodity/aluminum');
+
+            if ($response->successful()) {
+                $html = $response->body();
+                
+                // Carregar HTML no DOMDocument
+                $dom = new \DOMDocument();
+                libxml_use_internal_errors(true);
+                $dom->loadHTML($html);
+                libxml_clear_errors();
+                
+                // Usar XPath para encontrar o elemento
+                $xpath = new \DOMXPath($dom);
+                
+                // Queries em ordem de prioridade
+                $queries = [
+                    '//div[@id="item_definition"]//div[@class="table-responsive"]//table//tbody//tr//td[2]', // Query original
+                    '//div[@id="item_definition"]//table//tr//td[2]', // Query simplificada que funcionou
+                    '//div[@id="item_definition"]//td[2]', // Query ainda mais simples
+                ];
+                
+                foreach ($queries as $xpathQuery) {
+                    $nodes = $xpath->query($xpathQuery);
+                    
+                    if ($nodes->length > 0) {
+                        $priceText = trim($nodes->item(0)->textContent);
+                        
+                        // Verificar se parece com um preço válido (formato: NNNN.NN)
+                        if (preg_match('/\d{3,4}\.\d{2}/', $priceText)) {
+                            // Remover caracteres não numéricos exceto ponto
+                            $cleanPrice = preg_replace('/[^0-9.]/', '', $priceText);
+                            $price = floatval($cleanPrice);
+                            
+                            // Validar se está em um range razoável para preço do alumínio (USD por tonelada)
+                            if ($price > 1000 && $price < 10000) {
+                                Log::info('Preço do alumínio obtido via scraping', ['price' => $price, 'raw' => $priceText]);
+                                return $price;
+                            }
+                        }
+                    }
+                }
+                
+                Log::warning('Elemento não encontrado no scraping do Trading Economics');
+                
+            } else {
+                Log::warning('Resposta não bem-sucedida do Trading Economics', ['status' => $response->status()]);
+            }
+            
+        } catch (\Exception $e) {
+            Log::error('Erro no scraping do Trading Economics', ['error' => $e->getMessage()]);
+        }
+        
+        return null;
     }
 
     /**
@@ -111,7 +187,10 @@ class CurrencyRateService
                 return false;
             }
 
-            $response = Http::get('https://metals-api.com/api/latest', [
+            $response = Http::withOptions([
+                'verify' => false,
+                'timeout' => 30,
+            ])->get('https://metals-api.com/api/latest', [
                 'access_key' => $apiKey,
                 'base' => 'USD',
                 'symbols' => 'ALU' // Código do Alumínio

@@ -118,11 +118,41 @@ class CurrencyRateController extends Controller
     }
 
     /**
+     * Obter cotações do mês inteiro para o tipo selecionado
+     */
+    public function monthly(Request $request): JsonResponse
+    {
+        $type = $request->get('type', CurrencyRate::ALUMINUM);
+        $date = $request->get('date', Carbon::today()->toDateString());
+
+        // Validar tipo
+        if (!in_array($type, [CurrencyRate::USD, CurrencyRate::ALUMINUM])) {
+            return response()->json(['error' => 'Tipo de moeda inválido'], 400);
+        }
+
+        $startOfMonth = Carbon::parse($date)->startOfMonth()->toDateString();
+        $endOfMonth = Carbon::parse($date)->endOfMonth()->toDateString();
+
+        $monthlyRates = CurrencyRate::ofType($type)
+            ->whereBetween('rate_date', [$startOfMonth, $endOfMonth])
+            ->orderBy('rate_date', 'asc')
+            ->get();
+
+        return response()->json([
+            'type' => $type,
+            'month' => Carbon::parse($date)->format('Y-m'),
+            'start_date' => $startOfMonth,
+            'end_date' => $endOfMonth,
+            'rates' => $monthlyRates
+        ]);
+    }
+
+    /**
      * Obter variações (diária, semanal, mensal)
      */
     public function variations(Request $request): JsonResponse
     {
-        $type = $request->get('type', CurrencyRate::USD);
+        $type = $request->get('type', CurrencyRate::ALUMINUM);
         $date = $request->get('date', Carbon::today()->toDateString());
 
         // Validar tipo
@@ -132,47 +162,64 @@ class CurrencyRateController extends Controller
 
         $variations = [];
 
-        // Variação diária
-        $dailyRates = CurrencyRate::dailyVariation($type, $date)->get();
-        if ($dailyRates->count() >= 2) {
-            $current = $dailyRates->first();
-            $previous = $dailyRates->last();
-            $variations['daily'] = [
-                'current' => $current->rate,
-                'previous' => $previous->rate,
-                'variation' => CurrencyRate::calculateVariation($current->rate, $previous->rate),
-                'current_date' => $current->rate_date,
-                'previous_date' => $previous->rate_date
-            ];
-        }
+        // Variação diária - buscar cotação de hoje e de ontem
+        $todayRate = CurrencyRate::ofType($type)
+            ->whereDate('rate_date', $date)
+            ->orderBy('rate_date', 'desc')
+            ->first();
+        
+        $yesterdayRate = CurrencyRate::ofType($type)
+            ->whereDate('rate_date', '<', $date)
+            ->orderBy('rate_date', 'desc')
+            ->first();
 
-        // Variação semanal
-        $weeklyRates = CurrencyRate::weeklyVariation($type, $date);
-        if ($weeklyRates->count() >= 2) {
-            $current = $weeklyRates->first();
-            $previous = $weeklyRates->last();
-            $variations['weekly'] = [
-                'current' => $current->rate,
-                'previous' => $previous->rate,
-                'variation' => CurrencyRate::calculateVariation($current->rate, $previous->rate),
-                'current_date' => $current->rate_date,
-                'previous_date' => $previous->rate_date
-            ];
-        }
+        $variations['daily'] = [
+            'current' => $todayRate ? $todayRate->rate : null,
+            'previous' => $yesterdayRate ? $yesterdayRate->rate : null,
+            'variation' => ($todayRate && $yesterdayRate) ? CurrencyRate::calculateVariation($todayRate->rate, $yesterdayRate->rate) : null,
+            'current_date' => $todayRate ? $todayRate->rate_date : null,
+            'previous_date' => $yesterdayRate ? $yesterdayRate->rate_date : null
+        ];
 
-        // Variação mensal
-        $monthlyRates = CurrencyRate::monthlyVariation($type, $date);
-        if ($monthlyRates->count() >= 2) {
-            $current = $monthlyRates->first();
-            $previous = $monthlyRates->last();
-            $variations['monthly'] = [
-                'current' => $current->rate,
-                'previous' => $previous->rate,
-                'variation' => CurrencyRate::calculateVariation($current->rate, $previous->rate),
-                'current_date' => $current->rate_date,
-                'previous_date' => $previous->rate_date
-            ];
-        }
+        // Variação semanal - buscar cotação atual e de uma semana atrás
+        $currentWeekRate = CurrencyRate::ofType($type)
+            ->whereDate('rate_date', '<=', $date)
+            ->orderBy('rate_date', 'desc')
+            ->first();
+
+        $weekAgoDate = Carbon::parse($date)->subWeek();
+        $weekAgoRate = CurrencyRate::ofType($type)
+            ->whereDate('rate_date', '<=', $weekAgoDate)
+            ->orderBy('rate_date', 'desc')
+            ->first();
+
+        $variations['weekly'] = [
+            'current' => $currentWeekRate ? $currentWeekRate->rate : null,
+            'previous' => $weekAgoRate ? $weekAgoRate->rate : null,
+            'variation' => ($currentWeekRate && $weekAgoRate) ? CurrencyRate::calculateVariation($currentWeekRate->rate, $weekAgoRate->rate) : null,
+            'current_date' => $currentWeekRate ? $currentWeekRate->rate_date : null,
+            'previous_date' => $weekAgoRate ? $weekAgoRate->rate_date : null
+        ];
+
+        // Variação mensal - buscar cotação atual e de um mês atrás
+        $currentMonthRate = CurrencyRate::ofType($type)
+            ->whereDate('rate_date', '<=', $date)
+            ->orderBy('rate_date', 'desc')
+            ->first();
+
+        $monthAgoDate = Carbon::parse($date)->subMonth();
+        $monthAgoRate = CurrencyRate::ofType($type)
+            ->whereDate('rate_date', '<=', $monthAgoDate)
+            ->orderBy('rate_date', 'desc')
+            ->first();
+
+        $variations['monthly'] = [
+            'current' => $currentMonthRate ? $currentMonthRate->rate : null,
+            'previous' => $monthAgoRate ? $monthAgoRate->rate : null,
+            'variation' => ($currentMonthRate && $monthAgoRate) ? CurrencyRate::calculateVariation($currentMonthRate->rate, $monthAgoRate->rate) : null,
+            'current_date' => $currentMonthRate ? $currentMonthRate->rate_date : null,
+            'previous_date' => $monthAgoRate ? $monthAgoRate->rate_date : null
+        ];
 
         return response()->json([
             'type' => $type,

@@ -54,25 +54,25 @@ class CurrencyRate extends Model
         $date = $date ?: Carbon::today();
         $weekAgo = Carbon::parse($date)->subWeek();
         
-        // Buscar a cotação mais recente até a data atual
-        $currentRate = $query->getModel()->newQuery()
-                            ->where('currency_type', $type)
-                            ->where('rate_date', '<=', $date)
-                            ->orderBy('rate_date', 'desc')
-                            ->first();
+        // Buscar a cotação mais recente até a data atual e a de uma semana atrás
+        $rates = $query->where('currency_type', $type)
+                      ->where(function($q) use ($date, $weekAgo) {
+                          $q->where('rate_date', '<=', $date)
+                            ->orWhere('rate_date', '<=', $weekAgo);
+                      })
+                      ->orderBy('rate_date', 'desc')
+                      ->limit(10) // Buscar mais registros para garantir que temos dados
+                      ->get();
         
-        // Buscar a cotação mais próxima de uma semana atrás
-        $weekRate = $query->getModel()->newQuery()
-                          ->where('currency_type', $type)
-                          ->where('rate_date', '<=', $weekAgo)
-                          ->orderBy('rate_date', 'desc')
-                          ->first();
+        // Filtrar para pegar o mais recente até a data atual e o mais próximo de uma semana atrás
+        $currentRate = $rates->where('rate_date', '<=', $date)->first();
+        $weekRate = $rates->where('rate_date', '<=', $weekAgo)->first();
         
-        $collection = collect();
-        if ($currentRate) $collection->push($currentRate);
-        if ($weekRate) $collection->push($weekRate);
+        $result = collect();
+        if ($currentRate) $result->push($currentRate);
+        if ($weekRate && $weekRate->id !== $currentRate?->id) $result->push($weekRate);
         
-        return $collection;
+        return $result;
     }
 
     // Scope para variação mensal
@@ -81,25 +81,25 @@ class CurrencyRate extends Model
         $date = $date ?: Carbon::today();
         $monthAgo = Carbon::parse($date)->subMonth();
         
-        // Buscar a cotação mais recente até a data atual
-        $currentRate = $query->getModel()->newQuery()
-                            ->where('currency_type', $type)
-                            ->where('rate_date', '<=', $date)
-                            ->orderBy('rate_date', 'desc')
-                            ->first();
+        // Buscar a cotação mais recente até a data atual e a de um mês atrás
+        $rates = $query->where('currency_type', $type)
+                      ->where(function($q) use ($date, $monthAgo) {
+                          $q->where('rate_date', '<=', $date)
+                            ->orWhere('rate_date', '<=', $monthAgo);
+                      })
+                      ->orderBy('rate_date', 'desc')
+                      ->limit(50) // Buscar mais registros para garantir que temos dados
+                      ->get();
         
-        // Buscar a cotação mais próxima de um mês atrás
-        $monthRate = $query->getModel()->newQuery()
-                           ->where('currency_type', $type)
-                           ->where('rate_date', '<=', $monthAgo)
-                           ->orderBy('rate_date', 'desc')
-                           ->first();
+        // Filtrar para pegar o mais recente até a data atual e o mais próximo de um mês atrás
+        $currentRate = $rates->where('rate_date', '<=', $date)->first();
+        $monthRate = $rates->where('rate_date', '<=', $monthAgo)->first();
         
-        $collection = collect();
-        if ($currentRate) $collection->push($currentRate);
-        if ($monthRate) $collection->push($monthRate);
+        $result = collect();
+        if ($currentRate) $result->push($currentRate);
+        if ($monthRate && $monthRate->id !== $currentRate?->id) $result->push($monthRate);
         
-        return $collection;
+        return $result;
     }
 
     // Método para calcular variação percentual
